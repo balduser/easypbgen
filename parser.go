@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func ParseFile(filename string) (*Parsed, error) {
+func ParseFile(filename string, config *map[string]string) (*Parsed, error) {
 	var parsed Parsed
 	var mode string
 	var modelFlag bool
@@ -18,7 +18,12 @@ func ParseFile(filename string) (*Parsed, error) {
 	var targetMessage *Message
 	var targetEnum *Enum
 	parsed.Messages = make(map[string]*Message)
-	Enums := make(map[string]*Enum)
+	parsed.Enums = make(map[string]*Enum)
+	if config != nil {
+		parsed.Config = *config
+	}
+	//Templates = make(map[string]string)
+	loadTemplates(&parsed)
 
 	file, err := os.Open(filename)
 	defer file.Close()
@@ -40,6 +45,7 @@ func ParseFile(filename string) (*Parsed, error) {
 			}
 		} else if strings.HasPrefix(line, "service") {
 			targetService = &Service{ServiceName: strings.Split(line, " ")[1]}
+			targetService.Config = &parsed.Config
 			parsed.Services = append(parsed.Services, targetService)
 		} else if strings.HasPrefix(line, "rpc") {
 			rpcInit(line, targetService, parsed.Messages)
@@ -47,7 +53,7 @@ func ParseFile(filename string) (*Parsed, error) {
 			mode = "message"
 			targetMessage = messagePtr(strings.Split(line, " ")[1], parsed.Messages, targetService, modelFlag)
 		} else if strings.HasPrefix(line, "enum") {
-			targetEnum = enumPtr(strings.Split(line, " ")[1], Enums)
+			targetEnum = enumPtr(strings.Split(line, " ")[1], parsed.Enums)
 			mode = "enum"
 		} else if strings.HasPrefix(line, "/*#") {
 			modelFlag = true
